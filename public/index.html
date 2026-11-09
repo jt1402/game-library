@@ -20,9 +20,18 @@
           <h1>Game Library</h1>
         </div>
         <div class="hero-actions" id="adminBar" hidden>
-          <button class="btn ghost" id="exportBtn" title="Download all games as JSON">Export</button>
-          <button class="btn primary" id="addBtn">+ Add game</button>
-          <button class="btn ghost" id="logoutBtn" title="Sign out">Sign out</button>
+          <button class="btn ghost icon-btn" id="exportBtn" aria-label="Export JSON">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14"/></svg>
+            <span class="btn-label">Export</span>
+          </button>
+          <button class="btn ghost icon-btn" id="logoutBtn" aria-label="Sign out">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l-5-5 5-5M5 12h11"/></svg>
+            <span class="btn-label">Sign out</span>
+          </button>
+          <button class="btn primary add-btn" id="addBtn" aria-label="Add game">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            <span class="btn-label">Add game</span>
+          </button>
         </div>
       </div>
       <dl class="stats" id="stats"></dl>
