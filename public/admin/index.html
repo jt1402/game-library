@@ -2,10 +2,58 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Signing in…</title>
-  <meta http-equiv="refresh" content="0; url=/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Owner sign in · Game Library</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    body { min-height: 100dvh; display: grid; place-items: center; padding: 16px;
+      background: radial-gradient(700px 360px at 20% 0%, rgba(124, 92, 255, .25), transparent 60%), var(--bg); }
+    .login { width: min(380px, 100%); background: var(--bg-2); border: 1px solid var(--line); border-radius: 18px; padding: 28px; display: grid; gap: 16px; }
+    .login h1 { font-size: 26px; }
+    .login p { margin: 0; color: var(--muted); }
+    .login input { width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; color: var(--text); font-size: 15px; }
+    .login input:focus { outline: none; border-color: var(--accent); }
+    .login .btn { width: 100%; padding: 11px; }
+    .err { color: var(--danger); font-size: 14px; min-height: 1.2em; margin: -6px 0 0; }
+    .back { text-align: center; font-size: 13.5px; }
+    .back a { color: var(--muted); }
+  </style>
 </head>
-<body style="background:#0b0d12;color:#eef1f7;font-family:system-ui">
-  <p>Signed in. <a href="/" style="color:#a78bfa">Back to the library</a></p>
+<body>
+  <form class="login" id="form">
+    <div>
+      <p class="eyebrow">Owner only</p>
+      <h1>Sign in</h1>
+    </div>
+    <input type="password" id="password" placeholder="Password" autocomplete="current-password" required autofocus>
+    <p class="err" id="err" role="alert"></p>
+    <button class="btn primary" id="btn">Sign in</button>
+    <p class="back"><a href="/">← Back to the library</a></p>
+  </form>
+  <script>
+    const form = document.getElementById("form"), btn = document.getElementById("btn"), err = document.getElementById("err");
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      btn.disabled = true;
+      err.textContent = "";
+      try {
+        const res = await fetch("/api/login", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ password: document.getElementById("password").value }),
+        });
+        if (res.ok) return location.replace("/");
+        err.textContent = (await res.json().catch(() => ({}))).error || "Sign in failed";
+      } catch {
+        err.textContent = "Network error, try again";
+      }
+      btn.disabled = false;
+    });
+  </script>
 </body>
 </html>

@@ -1,1 +1,1 @@
-export const onRequestGet = ({ data }) => Response.json({ email: data.user });
+export const onRequestGet = () => Response.json({ owner: true });

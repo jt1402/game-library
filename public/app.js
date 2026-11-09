@@ -204,7 +204,7 @@ const FILTER_KEY = "filters-v2";
 /* ---------------- Data ---------------- */
 async function api(path, opts = {}) {
   const res = await fetch(path, { redirect: "manual", ...opts });
-  if (res.type === "opaqueredirect" || res.status === 401) throw new Error("Your session expired. Open /admin to sign in again.");
+  if (res.status === 401) throw new Error("You're signed out. Sign in again at /admin.");
   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `Request failed (${res.status})`);
   return res.status === 204 ? null : res.json();
 }
@@ -619,6 +619,10 @@ document.querySelectorAll("dialog").forEach((d) => {
 });
 
 $("#addBtn").addEventListener("click", () => openEditor());
+$("#logoutBtn").addEventListener("click", async () => {
+  await fetch("/api/logout", { method: "POST" }).catch(() => {});
+  location.reload();
+});
 $("#editBtn").addEventListener("click", () => openEditor(state.current));
 $("#deleteBtn").addEventListener("click", async () => {
   const g = state.current;

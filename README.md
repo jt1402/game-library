@@ -1,13 +1,14 @@
 # Game Library
 
 My personal log of every game I've played. Static frontend + Cloudflare Pages Functions,
-with games in **D1** (SQLite) and cover images in **R2**. Adding/editing is protected by
-**Cloudflare Access**.
+with games in **D1** (SQLite) and cover images in **R2**. Adding/editing is owner-only,
+behind a password login at `/admin`.
 
 ```
 public/              site (index.html, app.js, styles.css)
 functions/api/       GET /api/games (public)
-functions/api/admin/ create / update / delete / cover upload (Access-protected)
+functions/api/admin/ create / update / delete / cover upload (owner-only)
+functions/api/login  sign in / sign out (lib/auth.js)
 functions/covers/    serves cover images from R2
 lib/games.js         validation + helpers
 schema.sql           D1 table
@@ -20,7 +21,7 @@ scripts/import.mjs   one-time import of data/games.json + data/covers (Notion ex
 npm install
 npm run db:init:local
 npm run import:local      # loads the Notion export into the local DB/bucket
-npm run dev               # http://localhost:8788  (admin enabled via .dev.vars)
+npm run dev               # http://localhost:8788  (owner mode via DEV_BYPASS_AUTH in .dev.vars)
 ```
 
 ## Deploy (first time)
@@ -35,16 +36,18 @@ npx wrangler pages project create game-library --production-branch main
 npm run deploy
 ```
 
-Then protect admin with Cloudflare Access (Zero Trust dashboard → Access → Applications →
-Add → Self-hosted):
+Then set the owner password and session key (Pages secrets, encrypted):
 
-- Domain: `game-library.pages.dev`, paths `admin` and `api/admin/*` (one app, two destinations)
-- Policy: Allow → Emails → your email
-- Copy the app's **Audience (AUD) tag** and your **team domain** (`<team>.cloudflareaccess.com`)
-  into `ACCESS_AUD` / `ACCESS_TEAM_DOMAIN` in `wrangler.toml`, then `npm run deploy` again.
+```bash
+npx wrangler pages secret put ADMIN_PASSWORD --project-name game-library
+npx wrangler pages secret put SESSION_SECRET --project-name game-library   # any long random string
+```
 
-To add games: open `/admin`, sign in, and you'll be sent back to the library with an
-**+ Add game** button. Covers can be dropped, pasted, picked, or given as a URL.
+Secrets take effect on the next deploy. To add games, open `/admin`, sign in, and you'll be sent
+back to the library with an **+ Add game** button. Changing `SESSION_SECRET` signs out every
+session; changing `ADMIN_PASSWORD` changes the password.
+
+Pushing to `main` deploys automatically (Cloudflare Pages Git integration).
 
 ## Backup
 

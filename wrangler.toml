@@ -11,7 +11,4 @@ database_id = "ff198def-90bf-4e5d-8cba-182755d348be"
 binding = "COVERS"
 bucket_name = "game-library-covers"
 
-# Cloudflare Access (protects /admin and /api/admin/*)
-[vars]
-ACCESS_TEAM_DOMAIN = ""   # e.g. yourteam.cloudflareaccess.com
-ACCESS_AUD = ""           # Application Audience (AUD) tag from the Access app
+# Secrets (set with `wrangler pages secret put`): ADMIN_PASSWORD, SESSION_SECRET
