@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Game Library</title>
+  <meta name="description" content="Every game I've played, rated and logged.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="hero">
+    <div class="wrap">
+      <div class="hero-top">
+        <div>
+          <p class="eyebrow">Personal archive</p>
+          <h1>Game Library</h1>
+        </div>
+        <div class="hero-actions" id="adminBar" hidden>
+          <button class="btn ghost" id="rerateBtn" hidden></button>
+          <button class="btn ghost" id="exportBtn" title="Download all games as JSON">Export</button>
+          <button class="btn primary" id="addBtn">+ Add game</button>
+        </div>
+      </div>
+      <dl class="stats" id="stats"></dl>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="toolbar">
+      <div class="tabs" id="tabs" role="tablist"></div>
+      <div class="controls">
+        <label class="search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="search" type="search" placeholder="Search games or developers" autocomplete="off">
+        </label>
+        <select id="genre" aria-label="Genre"><option value="">All genres</option></select>
+        <select id="rating" aria-label="Rating"></select>
+        <select id="sort" aria-label="Sort">
+          <option value="name">Name A–Z</option>
+          <option value="rating">Highest rated</option>
+          <option value="released">Newest releases</option>
+          <option value="added">Recently added</option>
+        </select>
+      </div>
+    </div>
+    <p class="result-count" id="count"></p>
+    <section class="grid" id="grid" aria-live="polite"></section>
+    <p class="empty" id="empty" hidden>No games match those filters.</p>
+  </main>
+
+  <!-- Detail view -->
+  <dialog id="detail" class="modal detail">
+    <div class="detail-cover"><img id="dCover" alt=""></div>
+    <div class="detail-body">
+      <button class="close" data-close aria-label="Close">×</button>
+      <span class="pill" id="dStatus"></span>
+      <div class="detail-title">
+        <div>
+          <h2 id="dName"></h2>
+          <p class="muted" id="dMeta"></p>
+        </div>
+        <div id="dRating"></div>
+      </div>
+      <div class="chips" id="dGenres"></div>
+      <p class="notes" id="dNotes"></p>
+      <div class="detail-actions" id="dActions" hidden>
+        <button class="btn ghost danger" id="deleteBtn">Delete</button>
+        <button class="btn primary" id="editBtn">Edit</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Add / edit form (admin only) -->
+  <dialog id="editor" class="modal editor">
+    <form id="form" method="dialog" novalidate>
+      <header class="editor-head">
+        <h2 id="formTitle">Add game</h2>
+        <button type="button" class="close" data-close aria-label="Close">×</button>
+      </header>
+      <div class="editor-grid">
+        <div class="cover-col">
+          <div class="drop" id="drop" tabindex="0">
+            <img id="preview" alt="" hidden>
+            <div class="drop-hint" id="dropHint">
+              <strong>Drop, paste or pick a cover</strong>
+              <span>Resized automatically</span>
+            </div>
+            <input type="file" id="file" accept="image/*" hidden>
+          </div>
+          <input name="coverUrl" type="url" placeholder="…or paste an image URL" aria-label="Cover image URL">
+        </div>
+        <div class="fields">
+          <label>Name<input name="name" required maxlength="200"></label>
+          <div class="row">
+            <label>Status<select name="status"></select></label>
+            <label>Released<input name="released" type="date"></label>
+          </div>
+          <label>Developer<input name="developer" maxlength="200"></label>
+        </div>
+      </div>
+      <div class="field">
+        <span class="label">Rating <b class="rating-label" id="ratingLabel"></b></span>
+        <div class="rating-input" id="ratingInput" role="radiogroup" aria-label="Rating"></div>
+      </div>
+      <div class="field">
+        <span class="label">Genres</span>
+        <div class="genre-input" id="genreInput">
+          <input id="genreText" placeholder="Add a genre…" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="genreMenu">
+          <ul class="suggest" id="genreMenu" role="listbox" hidden></ul>
+        </div>
+      </div>
+      <label>Notes<textarea name="notes" rows="3" maxlength="5000" placeholder="Thoughts, playtime, memorable moments…"></textarea></label>
+      <p class="form-error" id="formError" role="alert"></p>
+      <footer class="editor-foot">
+        <button type="button" class="btn ghost" data-close>Cancel</button>
+        <button type="submit" class="btn primary" id="saveBtn">Save</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <!-- Re-rate queue (admin only) -->
+  <dialog id="rerate" class="modal rerate">
+    <button class="close" data-close aria-label="Close">×</button>
+    <div class="rerate-cover"><img id="rCover" alt=""></div>
+    <div class="rerate-body">
+      <p class="eyebrow" id="rProgress"></p>
+      <h2 id="rName"></h2>
+      <p class="muted">Currently a 10. Where does it really land? <span class="kbd-hint">Keys 1–9, 0 = 10</span></p>
+      <div class="rating-input" id="rRating" role="radiogroup" aria-label="New rating"></div>
+      <div class="rerate-actions">
+        <button class="btn ghost" id="rKeep">Keep 10</button>
+      </div>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status"></div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

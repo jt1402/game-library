@@ -1,0 +1,19 @@
+{
+  "name": "game-library",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler pages dev",
+    "db:init:local": "wrangler d1 execute game-library --local --file schema.sql",
+    "db:init:remote": "wrangler d1 execute game-library --remote --file schema.sql",
+    "import:local": "node scripts/import.mjs --local",
+    "import:remote": "node scripts/import.mjs --remote",
+    "deploy": "wrangler pages deploy"
+  },
+  "dependencies": {
+    "jose": "^6.2.16"
+  },
+  "devDependencies": {
+    "wrangler": "^4.158.0"
+  }
+}

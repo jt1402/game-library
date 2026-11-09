@@ -1,0 +1,17 @@
+name = "game-library"
+pages_build_output_dir = "public"
+compatibility_date = "2026-10-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "game-library"
+database_id = "REPLACE_WITH_D1_ID"
+
+[[r2_buckets]]
+binding = "COVERS"
+bucket_name = "game-library-covers"
+
+# Cloudflare Access (protects /admin and /api/admin/*)
+[vars]
+ACCESS_TEAM_DOMAIN = ""   # e.g. yourteam.cloudflareaccess.com
+ACCESS_AUD = ""           # Application Audience (AUD) tag from the Access app
