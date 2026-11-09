@@ -320,14 +320,27 @@ function openDetail(id) {
   $("#dStatus").className = `pill ${cls(g.status)}`;
   $("#dStatus").textContent = g.status;
   $("#dName").textContent = g.name;
-  const released = g.released ? new Date(g.released + "T00:00").toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" }) : "";
-  $("#dMeta").textContent = [g.developer, released].filter(Boolean).join(" · ");
   $("#dRating").innerHTML = g.rating ? scoreRing(g.rating, "lg") + `<span class="score-word t-${tier(g.rating)[1]}">${tier(g.rating)[2]}</span>` : "";
   $("#dGenres").innerHTML = g.genres.map((x) => `<span class="chip">${esc(x)}</span>`).join("");
+  $("#dGenres").hidden = !g.genres.length;
+  const facts = [
+    ["Developer", g.developer || "—"],
+    ["Released", fmtDate(g.released)],
+    ["Added", fmtDate(g.added)],
+    ["Rating", g.rating ? `${g.rating}/10 · ${tier(g.rating)[2]}` : "Unrated", g.rating ? `t-${tier(g.rating)[1]}` : ""],
+  ];
+  $("#dFacts").innerHTML = facts.map(([k, v, c]) =>
+    `<div class="fact"><dt>${k}</dt><dd class="${c || ""}" title="${esc(v)}">${esc(v)}</dd></div>`).join("");
   $("#dNotes").textContent = g.notes || "";
+  $("#dNotesBlock").hidden = !g.notes;
   $("#dActions").hidden = !state.admin;
   $("#detail").showModal();
+  $("#detail").scrollTop = 0;
 }
+
+/** Dates are shown in English for every visitor, e.g. "Nov 17, 2009". */
+const fmtDate = (d) =>
+  d ? new Date(d + "T00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—";
 
 /* ---------------- Editor ---------------- */
 const form = $("#form");

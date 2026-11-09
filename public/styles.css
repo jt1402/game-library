@@ -254,15 +254,59 @@ select {
 }
 .close:hover { background: var(--surface-2); }
 
-.detail[open] { display: grid; }
-@media (min-width: 760px) { .detail[open] { grid-template-columns: 1.15fr 1fr; } }
-.detail-cover { background: #000; min-height: 220px; }
-.detail-cover img { width: 100%; height: 100%; object-fit: cover; max-height: 60vh; }
-@media (min-width: 760px) { .detail-cover img { max-height: none; } }
-.detail-body { position: relative; padding: 24px; overflow: auto; }
-.detail-title { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin: 12px 0 16px; }
-.detail-body h2 { margin: 0 0 4px; font-size: 28px; line-height: 1.15; }
-.detail-body .muted { margin: 0; }
+/* ---------- Detail: cinematic hero ---------- */
+.detail { width: min(680px, calc(100% - 24px)); overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; }
+.detail .close { top: 14px; right: 14px; background: rgba(8, 10, 14, .55); backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, .12); }
+
+.dhero { position: relative; background: linear-gradient(135deg, #1b2030, #12151d); min-height: 200px; overflow: hidden; }
+.dhero img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
+.dhero img[hidden] { display: none; }
+.dhero::after {
+  content: ""; position: absolute; inset: -1px 0; pointer-events: none;
+  background:
+    linear-gradient(to bottom, rgba(18, 21, 29, .35) 0%, transparent 22%),
+    linear-gradient(to top, var(--bg-2) 0%, rgba(18, 21, 29, .88) 22%, rgba(18, 21, 29, .2) 58%, transparent 75%);
+}
+.dhero-info {
+  position: absolute; z-index: 1; left: 0; right: 0; bottom: 0;
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 16px;
+  padding: 0 24px 4px;
+}
+.dhero-title { min-width: 0; display: grid; justify-items: start; gap: 10px; }
+.dhero-title h2 {
+  margin: 0; font-size: clamp(24px, 4.2vw, 34px); line-height: 1.08; letter-spacing: -.02em;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, .7);
+}
+.dhero #dRating { flex: none; }
+
+.detail-body { padding: 18px 24px 24px; display: grid; gap: 20px; }
+.facts {
+  margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px;
+  background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+}
+@media (min-width: 560px) { .facts { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.fact { background: var(--surface); padding: 11px 14px; min-width: 0; }
+.fact dt { font-size: 10.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.fact dd { margin: 3px 0 0; font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fact dd[class*="t-"] { color: var(--sc-2); }
+.notes-block h3 { margin: 0 0 6px; font-size: 10.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.notes-block p { margin: 0; }
+.notes-block[hidden] { display: none; }
+
+/* Phones: slide-up bottom sheet */
+@media (max-width: 559px) {
+  .detail {
+    width: 100%; max-width: 100%; margin: auto 0 0; max-height: 92dvh;
+    border-radius: 20px 20px 0 0; border-bottom: 0;
+  }
+  .detail[open] { animation: sheet .26s cubic-bezier(.2, .8, .2, 1); }
+  .dhero-info { padding: 0 16px 2px; }
+  .detail-body { padding: 16px 16px calc(20px + env(safe-area-inset-bottom)); gap: 18px; }
+  .detail .score-lg { width: 60px; height: 60px; }
+  .detail .score-lg b { font-size: 23px; }
+  .detail-actions .btn { flex: 1; padding: 11px; }
+}
+@keyframes sheet { from { transform: translateY(100%); } }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip {
   background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px;
@@ -271,7 +315,7 @@ select {
 .chip button { border: 0; background: none; cursor: pointer; color: var(--muted); padding: 0 0 0 4px; }
 .notes { white-space: pre-wrap; color: #cfd5e2; }
 .notes:empty { display: none; }
-.detail-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--line); }
+.detail-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 16px; border-top: 1px solid var(--line); }
 
 /* ---------- Editor ---------- */
 .editor { width: min(760px, calc(100% - 24px)); }

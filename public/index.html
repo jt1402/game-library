@@ -54,19 +54,24 @@
 
   <!-- Detail view -->
   <dialog id="detail" class="modal detail">
-    <div class="detail-cover"><img id="dCover" alt=""></div>
-    <div class="detail-body">
-      <button class="close" data-close aria-label="Close">×</button>
-      <span class="pill" id="dStatus"></span>
-      <div class="detail-title">
-        <div>
+    <button class="close" data-close aria-label="Close">×</button>
+    <div class="dhero">
+      <img id="dCover" alt="">
+      <div class="dhero-info">
+        <div class="dhero-title">
+          <span class="pill" id="dStatus"></span>
           <h2 id="dName"></h2>
-          <p class="muted" id="dMeta"></p>
         </div>
         <div id="dRating"></div>
       </div>
+    </div>
+    <div class="detail-body">
       <div class="chips" id="dGenres"></div>
-      <p class="notes" id="dNotes"></p>
+      <dl class="facts" id="dFacts"></dl>
+      <section class="notes-block" id="dNotesBlock">
+        <h3>Notes</h3>
+        <p class="notes" id="dNotes"></p>
+      </section>
       <div class="detail-actions" id="dActions" hidden>
         <button class="btn ghost danger" id="deleteBtn">Delete</button>
         <button class="btn primary" id="editBtn">Edit</button>
