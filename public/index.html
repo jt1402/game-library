@@ -20,7 +20,6 @@
           <h1>Game Library</h1>
         </div>
         <div class="hero-actions" id="adminBar" hidden>
-          <button class="btn ghost" id="rerateBtn" hidden></button>
           <button class="btn ghost" id="exportBtn" title="Download all games as JSON">Export</button>
           <button class="btn primary" id="addBtn">+ Add game</button>
           <button class="btn ghost" id="logoutBtn" title="Sign out">Sign out</button>
@@ -121,21 +120,6 @@
         <button type="submit" class="btn primary" id="saveBtn">Save</button>
       </footer>
     </form>
-  </dialog>
-
-  <!-- Re-rate queue (admin only) -->
-  <dialog id="rerate" class="modal rerate">
-    <button class="close" data-close aria-label="Close">×</button>
-    <div class="rerate-cover"><img id="rCover" alt=""></div>
-    <div class="rerate-body">
-      <p class="eyebrow" id="rProgress"></p>
-      <h2 id="rName"></h2>
-      <p class="muted">Currently a 10. Where does it really land? <span class="kbd-hint">Keys 1–9, 0 = 10</span></p>
-      <div class="rating-input" id="rRating" role="radiogroup" aria-label="New rating"></div>
-      <div class="rerate-actions">
-        <button class="btn ghost" id="rKeep">Keep 10</button>
-      </div>
-    </div>
   </dialog>
 
   <div class="toast" id="toast" role="status"></div>

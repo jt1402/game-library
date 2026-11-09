@@ -209,11 +209,6 @@ async function api(path, opts = {}) {
   return res.status === 204 ? null : res.json();
 }
 
-const payloadOf = (g) => ({
-  name: g.name, status: g.status, released: g.released, developer: g.developer,
-  rating: g.rating, genres: g.genres, notes: g.notes,
-});
-
 function replaceGame(game) {
   state.games = state.games.map((g) => (g.id === game.id ? game : g));
 }
@@ -237,7 +232,6 @@ function render() {
   renderGenreFilter();
   renderRatingFilter();
   renderGrid();
-  renderRerateBtn();
 }
 
 function renderRatingFilter() {
@@ -531,67 +525,6 @@ form.addEventListener("submit", async (e) => {
   } finally {
     $("#saveBtn").disabled = false;
   }
-});
-
-/* ---------------- Re-rate queue ---------------- */
-const RERATED_KEY = "rerated";
-const loadRerated = () => { try { return new Set(JSON.parse(localStorage.getItem(RERATED_KEY) || "[]")); } catch { return new Set(); } };
-const markRerated = (id) => { const s = loadRerated(); s.add(id); try { localStorage.setItem(RERATED_KEY, JSON.stringify([...s])); } catch {} };
-let rerateGame = null, rerateTotal = 0, rerateBusy = false;
-
-function renderRerateBtn() {
-  const n = state.admin ? state.games.filter((g) => g.rating === 10 && !loadRerated().has(g.id)).length : 0;
-  $("#rerateBtn").hidden = !n;
-  $("#rerateBtn").textContent = `Re-rate 10s (${n})`;
-}
-
-const setRerate = ratingPicker($("#rRating"), (n) => submitRerate(n));
-
-function nextRerate() {
-  const queue = state.games.filter((g) => g.rating === 10 && !loadRerated().has(g.id))
-    .sort((a, b) => a.name.localeCompare(b.name));
-  rerateGame = queue[0];
-  if (!rerateGame) {
-    $("#rerate").close();
-    render();
-    return toast("All 10s reviewed");
-  }
-  $("#rProgress").textContent = `${rerateTotal - queue.length + 1} of ${rerateTotal}`;
-  $("#rName").textContent = rerateGame.name;
-  $("#rCover").src = coverSrc(rerateGame);
-  setRerate(10);
-}
-
-async function submitRerate(n) {
-  if (!rerateGame || rerateBusy) return;
-  const g = rerateGame;
-  setRerate(n);
-  if (n !== 10) {
-    rerateBusy = true;
-    try {
-      replaceGame(await api(`/api/admin/games/${g.id}`, {
-        method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...payloadOf(g), rating: n }),
-      }));
-    } catch (err) {
-      rerateBusy = false;
-      return toast(err.message);
-    }
-    rerateBusy = false;
-  }
-  markRerated(g.id);
-  nextRerate();
-}
-
-$("#rerateBtn").addEventListener("click", () => {
-  rerateTotal = state.games.filter((g) => g.rating === 10 && !loadRerated().has(g.id)).length;
-  $("#rerate").showModal();
-  nextRerate();
-});
-$("#rKeep").addEventListener("click", () => submitRerate(10));
-$("#rerate").addEventListener("close", render);
-document.addEventListener("keydown", (e) => {
-  if (!$("#rerate").open || e.ctrlKey || e.metaKey || e.altKey) return;
-  if (/^[0-9]$/.test(e.key)) submitRerate(e.key === "0" ? 10 : Number(e.key));
 });
 
 /* ---------------- Events ---------------- */
