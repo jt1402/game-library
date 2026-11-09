@@ -6,11 +6,14 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 const target = process.argv.includes("--remote") ? "--remote" : "--local";
 const games = JSON.parse(readFileSync("data/games.json", "utf8"));
 
+const TYPES = { webp: "image/webp", jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", avif: "image/avif", gif: "image/gif" };
+const typeOf = (key) => TYPES[key.split(".").pop().toLowerCase()] || "application/octet-stream";
+
 const q = (v) => (v == null ? "NULL" : `'${String(v).replace(/'/g, "''")}'`);
 const sql = games
   .map((g) =>
-    "INSERT OR REPLACE INTO games (id, name, status, rating, developer, released, genres, added, cover, notes) VALUES (" +
-    [g.id, g.name, g.status, g.rating, g.developer, g.released, JSON.stringify(g.genres), g.added, g.cover, g.notes || ""]
+    "INSERT OR REPLACE INTO games (id, name, status, rating, developer, released, genres, added, cover, notes, updated) VALUES (" +
+    [g.id, g.name, g.status, g.rating, g.developer, g.released, JSON.stringify(g.genres), g.added, g.cover, g.notes || "", g.updated]
       .map(q).join(", ") + ");")
   .join("\n");
 mkdirSync(".wrangler", { recursive: true });
@@ -41,7 +44,7 @@ await Promise.all(
   Array.from({ length: target === "--remote" ? 6 : 1 }, async () => {
     for (let g; (g = queue.shift()); ) {
       await run(["r2", "object", "put", `game-library-covers/${g.cover}`, "--file", `data/${g.cover}`,
-                 "--content-type", "image/webp", target]);
+                 "--content-type", typeOf(g.cover), target]);
       process.stdout.write(`\rCovers: ${++done}/${total}`);
     }
   })
