@@ -213,20 +213,24 @@ select {
 
 /* Phones: two compact cards per row */
 @media (max-width: 559px) {
-  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .card { aspect-ratio: 4 / 5; border-radius: 12px; }
-  .card::after { background: linear-gradient(to top, rgba(8, 10, 14, .96) 0%, rgba(8, 10, 14, .6) 40%, transparent 70%); }
-  .card-top { top: 7px; left: 7px; right: 7px; }
-  .card .pill { padding: 2px 7px; font-size: 10px; gap: 4px; }
+  /* Whole landscape cover on top, title underneath (no cropping, no text over the art). */
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 10px; }
+  .card { aspect-ratio: auto; display: flex; flex-direction: column; border-radius: 12px; }
+  .card::after { display: none; }
+  .card img, .card .no-cover { position: relative; inset: auto; width: 100%; height: auto; aspect-ratio: 16 / 9; }
+  .card .no-cover { font-size: 30px; }
+  .card:hover img { transform: none; }
+  .card-top { top: 6px; left: 6px; right: 6px; }
+  .card .pill { padding: 2px 6px; font-size: 9.5px; gap: 4px; }
   .card .pill::before { width: 6px; height: 6px; }
-  .card .score { width: 34px; height: 34px; }
-  .card .score b { font-size: 13px; }
-  .card-info { left: 9px; right: 9px; bottom: 8px; }
+  .card .score { width: 30px; height: 30px; }
+  .card .score b { font-size: 12px; }
+  .card-info { position: static; padding: 8px 9px 10px; }
   .card-info h3 {
-    font-size: 13.5px;
+    font-size: 13px; text-shadow: none; min-height: 2.5em;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
   }
-  .card-info p { font-size: 11px; }
+  .card-info p { font-size: 11px; margin-top: 3px; }
   .card:hover { transform: none; }
 }
 .card-top .pill { margin-top: 2px; }
