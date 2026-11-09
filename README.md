@@ -39,8 +39,8 @@ npm run deploy
 Then set the owner password and session key (Pages secrets, encrypted):
 
 ```bash
-npx wrangler pages secret put ADMIN_PASSWORD --project-name game-library
-npx wrangler pages secret put SESSION_SECRET --project-name game-library   # any long random string
+npx wrangler pages secret put ADMIN_PASSWORD --project-name jt-games
+npx wrangler pages secret put SESSION_SECRET --project-name jt-games   # any long random string
 ```
 
 Secrets take effect on the next deploy. To add games, open `/admin`, sign in, and you'll be sent
