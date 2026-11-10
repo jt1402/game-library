@@ -198,7 +198,11 @@ addEventListener("scroll", (e) => {
 }, true);
 addEventListener("resize", () => openDropdown?.reposition());
 
-const state = { games: [], admin: false, tab: "All", q: "", genre: "", rating: "", sort: "name", current: null };
+const state = { games: [], admin: false, tab: "All", q: "", genre: "", rating: "", sort: "name", current: null, suggestions: [] };
+const BASE_TITLE = document.title.includes("·") ? "Game Library" : document.title;
+const slug = (s) => s.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+/** The game id in a /game/<id> URL, or "". */
+const gamePath = () => decodeURIComponent(location.pathname.match(/^\/game\/([^/]+)\/?$/)?.[1] || "");
 const FILTER_KEY = "filters-v2";
 
 /* ---------------- Data ---------------- */
@@ -221,8 +225,13 @@ async function init() {
   state.games = games;
   state.admin = admin;
   $("#adminBar").hidden = !admin;
+  $("#suggestBtn").hidden = admin;
   restoreFilters();
   render();
+  const id = gamePath();
+  if (id && state.games.some((g) => g.id === id)) openDetail(id, { push: false });
+  else if (id) { history.replaceState(null, "", "/"); toast("That game isn't in the library"); }
+  if (admin) loadSuggestions().catch(() => {});
 }
 
 /* ---------------- Rendering ---------------- */
@@ -311,9 +320,12 @@ function renderGrid() {
 }
 
 /* ---------------- Detail ---------------- */
-function openDetail(id) {
+function openDetail(id, { push = true } = {}) {
   const g = state.games.find((x) => x.id === id);
   if (!g) return;
+  const path = `/game/${encodeURIComponent(g.id)}`;
+  if (push && location.pathname !== path) history.pushState({ detail: g.id }, "", path);
+  document.title = `${g.name} · ${BASE_TITLE}`;
   state.current = g;
   $("#dCover").src = coverSrc(g);
   $("#dCover").hidden = !g.cover;
@@ -334,9 +346,37 @@ function openDetail(id) {
   $("#dNotes").textContent = g.notes || "";
   $("#dNotesBlock").hidden = !g.notes;
   $("#dActions").hidden = !state.admin;
-  $("#detail").showModal();
+  if (!$("#detail").open) $("#detail").showModal();
   $("#detail").scrollTop = 0;
 }
+
+/* Closing the detail view returns the URL to the library; Back/Forward open and close it. */
+$("#detail").addEventListener("close", () => {
+  document.title = BASE_TITLE;
+  if (!gamePath()) return;
+  if (history.state?.detail) history.back();
+  else history.replaceState(null, "", "/");
+});
+addEventListener("popstate", () => {
+  const id = gamePath();
+  if (id) openDetail(id, { push: false });
+  else if ($("#detail").open) $("#detail").close();
+});
+
+$("#shareBtn").addEventListener("click", async () => {
+  const g = state.current;
+  const url = `${location.origin}/game/${encodeURIComponent(g.id)}`;
+  if (navigator.share && matchMedia("(pointer: coarse)").matches) {
+    try { await navigator.share({ title: g.name, url }); } catch {}
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+    toast("Link copied");
+  } catch {
+    prompt("Copy this link:", url);
+  }
+});
 
 /** Dates are shown in English for every visitor, e.g. "Nov 17, 2009". */
 const fmtDate = (d) =>
@@ -344,7 +384,7 @@ const fmtDate = (d) =>
 
 /* ---------------- Editor ---------------- */
 const form = $("#form");
-let editing = null, editGenres = [], editRating = null, pendingCover = null;
+let editing = null, editGenres = [], editRating = null, pendingCover = null, fromSuggestion = null;
 
 form.status.innerHTML = STATUSES.map((s) => `<option data-cls="${cls(s)}">${s}</option>`).join("");
 [$("#genre"), $("#rating"), $("#sort"), form.status].forEach(enhanceSelect);
@@ -463,17 +503,20 @@ function setPreview(src) {
   $("#drop").classList.toggle("has-image", !!src);
 }
 
-function openEditor(game = null) {
+/** prefill (new games only): { name, status, notes, suggestionId } from the suggestion inbox. */
+function openEditor(game = null, prefill = null) {
   editing = game;
+  fromSuggestion = prefill?.suggestionId ?? null;
   pendingCover = null;
   form.reset();
+  closeLookup();
   $("#formError").textContent = "";
   $("#formTitle").textContent = game ? "Edit game" : "Add game";
-  form.name.value = game?.name || "";
-  form.status.value = game?.status || "Completed";
+  form.name.value = game?.name || prefill?.name || "";
+  form.status.value = game?.status || prefill?.status || "Completed";
   form.released.value = game?.released || "";
   form.developer.value = game?.developer || "";
-  form.notes.value = game?.notes || "";
+  form.notes.value = game?.notes || prefill?.notes || "";
   editGenres = [...(game?.genres || [])];
   renderGenreChips();
   setRating(game?.rating || null);
@@ -481,7 +524,99 @@ function openEditor(game = null) {
   $("#detail").close();
   $("#editor").showModal();
   form.name.focus();
+  if (prefill?.name) searchLookup();
 }
+
+/* ---------------- Auto-fill from RAWG ---------------- */
+const lookupMenu = $("#lookupMenu");
+let lookupResults = [], lookupActive = -1, lookupTimer, lookupAbort, lookupOff = false;
+
+function paintLookup() {
+  lookupMenu.hidden = !lookupResults.length;
+  form.name.setAttribute("aria-expanded", String(!lookupMenu.hidden));
+  lookupMenu.innerHTML = lookupResults.map((r, i) => `
+    <li role="option" data-i="${i}" class="${i === lookupActive ? "active" : ""}" aria-selected="${i === lookupActive}">
+      ${r.thumb ? `<img src="${esc(r.thumb)}" alt="" loading="lazy">` : `<span class="thumb-none"></span>`}
+      <span class="lk-name">${esc(r.name)}</span><span class="lk-year">${esc(r.year)}</span>
+    </li>`).join("") + (lookupResults.length ? `<li class="lk-foot" aria-hidden="true">Fills in date, developer, genres and cover</li>` : "");
+  if (!lookupMenu.hidden) placeFloating(form.name, lookupMenu, { maxHeight: 340 });
+}
+
+function closeLookup() {
+  clearTimeout(lookupTimer);
+  lookupAbort?.abort();
+  lookupResults = [];
+  lookupActive = -1;
+  paintLookup();
+}
+
+async function searchLookup() {
+  const q = form.name.value.trim();
+  lookupAbort?.abort();
+  if (lookupOff || q.length < 2) return closeLookup();
+  lookupAbort = new AbortController();
+  try {
+    lookupResults = await api(`/api/admin/lookup?q=${encodeURIComponent(q)}`, { signal: lookupAbort.signal });
+    lookupActive = lookupResults.length ? 0 : -1;
+    if (document.activeElement === form.name) paintLookup();
+  } catch (err) {
+    if (err.name === "AbortError") return;
+    if (/isn't set up/.test(err.message)) lookupOff = true; // no API key: stay quiet from now on
+    closeLookup();
+  }
+}
+
+async function applyLookup(i) {
+  const r = lookupResults[i];
+  if (!r) return;
+  closeLookup();
+  form.name.value = r.name;
+  try {
+    const d = await api(`/api/admin/lookup?id=${r.id}`);
+    form.name.value = d.name || r.name;
+    if (d.released) form.released.value = d.released;
+    if (d.developer) form.developer.value = d.developer;
+    const known = new Map(allGenres().map((g) => [g.toLowerCase(), g])); // reuse your spelling of a genre
+    for (const g of d.genres) {
+      const name = known.get(g.toLowerCase()) || g;
+      if (!editGenres.some((x) => x.toLowerCase() === name.toLowerCase())) editGenres.push(name);
+    }
+    renderGenreChips();
+    if (d.cover && !pendingCover) { form.coverUrl.value = d.cover; setPreview(d.cover); }
+    toast("Details filled in");
+  } catch (err) {
+    $("#formError").textContent = err.message;
+  }
+}
+
+form.name.addEventListener("input", () => {
+  clearTimeout(lookupTimer);
+  lookupTimer = setTimeout(searchLookup, 250);
+});
+form.name.addEventListener("blur", () => setTimeout(closeLookup, 150));
+form.name.addEventListener("keydown", (e) => {
+  if (lookupMenu.hidden) return;
+  const n = lookupResults.length;
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    lookupActive = (lookupActive + (e.key === "ArrowDown" ? 1 : -1) + n) % n;
+    paintLookup();
+    lookupMenu.querySelector(".active")?.scrollIntoView({ block: "nearest" });
+  } else if (e.key === "Enter" && lookupActive >= 0) {
+    e.preventDefault();
+    applyLookup(lookupActive);
+  } else if (e.key === "Escape") {
+    e.preventDefault();
+    e.stopPropagation();
+    closeLookup();
+  }
+});
+lookupMenu.addEventListener("mousedown", (e) => {
+  const li = e.target.closest("[data-i]");
+  e.preventDefault();
+  if (li) applyLookup(Number(li.dataset.i));
+});
+form.addEventListener("scroll", () => { if (!lookupMenu.hidden) placeFloating(form.name, lookupMenu, { maxHeight: 340 }); });
 
 /** Downscale any image to a <=960px WebP before upload. */
 async function toWebp(file) {
@@ -533,6 +668,7 @@ form.addEventListener("submit", async (e) => {
     $("#editor").close();
     render();
     toast(editing ? "Saved" : `Added ${game.name}`);
+    if (fromSuggestion != null) dismissSuggestion(fromSuggestion).catch(() => {});
   } catch (err) {
     $("#formError").textContent = err.message;
   } finally {
@@ -608,14 +744,134 @@ $("#exportBtn").addEventListener("click", () => {
   URL.revokeObjectURL(a.href);
 });
 
+/* ---------------- Suggestions: public form ---------------- */
+const sForm = $("#suggestForm");
+
+function openSuggest() {
+  sForm.reset();
+  sForm.hidden = false;
+  $("#suggestDone").hidden = true;
+  $("#suggestError").textContent = "";
+  $("#suggestHint").hidden = true;
+  $("#suggest").showModal();
+  sForm.game.focus();
+}
+
+/** Tells people when the game they typed is already in the library. */
+function inLibraryNote(name) {
+  const key = slug(name || "");
+  const g = key && state.games.find((x) => slug(x.name) === key);
+  if (!g) return "";
+  if (g.status === "Wishlist") return "Already on the wishlist. It's coming!";
+  return `Already in the library: ${g.status}${g.rating ? ` · rated ${g.rating}/10` : ""}`;
+}
+
+sForm.game.addEventListener("input", () => {
+  const note = inLibraryNote(sForm.game.value);
+  $("#suggestHint").textContent = note;
+  $("#suggestHint").hidden = !note;
+});
+
+sForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!sForm.game.value.trim()) return ($("#suggestError").textContent = "Which game should I play?");
+  $("#suggestSend").disabled = true;
+  $("#suggestError").textContent = "";
+  try {
+    await api("/api/suggest", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        game: sForm.game.value, message: sForm.message.value, from: sForm.from.value, website: sForm.website.value,
+      }),
+    });
+    sForm.hidden = true;
+    $("#suggestDone").hidden = false;
+  } catch (err) {
+    $("#suggestError").textContent = err.message;
+  } finally {
+    $("#suggestSend").disabled = false;
+  }
+});
+$("#suggestBtn").addEventListener("click", openSuggest);
+$("#suggestAgain").addEventListener("click", openSuggest);
+
+/* ---------------- Suggestions: owner inbox ---------------- */
+async function loadSuggestions() {
+  state.suggestions = await api("/api/admin/suggestions");
+  renderInbox();
+}
+
+function renderInbox() {
+  const list = state.suggestions;
+  $("#inboxCount").textContent = list.length > 99 ? "99+" : list.length;
+  $("#inboxCount").hidden = !list.length;
+  $("#inboxEmpty").hidden = list.length > 0;
+  $("#inboxList").innerHTML = list.map((s) => {
+    const note = inLibraryNote(s.game);
+    const meta = [s.from_name ? `from ${esc(s.from_name)}` : "anonymous", fmtDate(s.created.slice(0, 10))].join(" · ");
+    return `<li class="sugg">
+      <div class="sugg-main">
+        <h3>${esc(s.game)}</h3>
+        <p class="sugg-meta">${meta}</p>
+        ${note ? `<p class="hint">${esc(note)}</p>` : ""}
+        ${s.message ? `<p class="sugg-msg">${esc(s.message)}</p>` : ""}
+      </div>
+      <div class="sugg-actions">
+        <button class="btn ghost" data-dismiss="${s.id}">Dismiss</button>
+        <button class="btn primary" data-wish="${s.id}">Add to wishlist</button>
+      </div>
+    </li>`;
+  }).join("");
+}
+
+async function dismissSuggestion(id) {
+  await api(`/api/admin/suggestions/${id}`, { method: "DELETE" });
+  state.suggestions = state.suggestions.filter((s) => s.id !== id);
+  renderInbox();
+}
+
+$("#inboxBtn").addEventListener("click", () => {
+  renderInbox();
+  $("#inbox").showModal();
+  loadSuggestions().catch((err) => toast(err.message));
+});
+$("#inboxList").addEventListener("click", async (e) => {
+  const dismiss = e.target.closest("[data-dismiss]");
+  const wish = e.target.closest("[data-wish]");
+  if (dismiss) {
+    dismiss.disabled = true;
+    try { await dismissSuggestion(Number(dismiss.dataset.dismiss)); } catch (err) { toast(err.message); dismiss.disabled = false; }
+  } else if (wish) {
+    const s = state.suggestions.find((x) => x.id === Number(wish.dataset.wish));
+    if (!s) return;
+    const who = s.from_name ? `Suggested by ${s.from_name}` : "Suggested by a visitor";
+    $("#inbox").close();
+    openEditor(null, {
+      name: s.game, status: "Wishlist", suggestionId: s.id,
+      notes: s.message ? `${who}: “${s.message}”` : who,
+    });
+  }
+});
+
 /* ---------------- Misc ---------------- */
 let toastTimer;
 function toast(msg) {
   const t = $("#toast");
   t.textContent = msg;
-  t.classList.add("show");
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
+  // Re-show the popover so it stacks above any dialog opened since the last toast.
+  if (t.showPopover) {
+    if (t.matches(":popover-open")) t.hidePopover();
+    t.showPopover();
+  }
+  t.classList.remove("show");
+  void t.offsetWidth; // restart the fade-in
+  t.classList.add("show");
+  toastTimer = setTimeout(() => {
+    t.classList.remove("show");
+    toastTimer = setTimeout(() => t.hidePopover?.(), 250);
+  }, 2200);
 }
 
 function saveFilters() {

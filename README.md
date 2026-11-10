@@ -6,8 +6,9 @@ behind a password login at `/admin`.
 
 ```
 public/              site (index.html, app.js, styles.css)
-functions/api/       GET /api/games (public)
-functions/api/admin/ create / update / delete / cover upload (owner-only)
+functions/api/       GET /api/games, POST /api/suggest (public)
+functions/api/admin/ create / update / delete / cover upload / RAWG lookup / suggestion inbox (owner-only)
+functions/game/      /game/<id> share links (page + Open Graph tags for link previews)
 functions/api/login  sign in / sign out (lib/auth.js)
 functions/covers/    serves cover images from R2
 lib/games.js         validation + helpers
@@ -48,6 +49,23 @@ back to the library with an **+ Add game** button. Changing `SESSION_SECRET` sig
 session; changing `ADMIN_PASSWORD` changes the password.
 
 Pushing to `main` deploys automatically (Cloudflare Pages Git integration).
+
+## Auto-fill (RAWG)
+
+Typing a name in the editor searches [RAWG](https://rawg.io/apidocs) and fills in release date,
+developer, genres and cover. Get a free API key there, then:
+
+```bash
+npx wrangler pages secret put RAWG_API_KEY --project-name jt-games
+```
+
+Locally, add `RAWG_API_KEY=...` to `.dev.vars`. Without a key the editor just works as before.
+
+## Suggestions
+
+Visitors can suggest games with **Suggest a game** (max 5 per hour per visitor). They land in the
+owner-only inbox, where **Add to wishlist** opens the editor pre-filled. After pulling this change,
+create the table once: `npm run db:init:remote` (safe to re-run).
 
 ## Backup
 

@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Game Library</title>
   <meta name="description" content="Every game I've played, rated and logged.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Game Library">
+  <meta property="og:title" content="Game Library">
+  <meta property="og:description" content="Every game I've played, rated and logged.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,7 +23,17 @@
           <p class="eyebrow">Personal archive</p>
           <h1>Game Library</h1>
         </div>
-        <div class="hero-actions" id="adminBar" hidden>
+        <div class="hero-actions">
+          <button class="btn ghost suggest-btn" id="suggestBtn">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3Z"/></svg>
+            <span class="btn-label">Suggest<span class="long"> a game</span></span>
+          </button>
+          <div class="hero-actions" id="adminBar" hidden>
+          <button class="btn ghost icon-btn" id="inboxBtn" aria-label="Suggestions">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h4l1.5 3h5L16 13h4M4 13l2.5-7h11L20 13v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-5Z"/></svg>
+            <span class="btn-label">Suggestions</span>
+            <span class="badge" id="inboxCount" hidden></span>
+          </button>
           <button class="btn ghost icon-btn" id="exportBtn" aria-label="Export JSON">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14"/></svg>
             <span class="btn-label">Export</span>
@@ -32,6 +46,7 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
             <span class="btn-label">Add game</span>
           </button>
+          </div>
         </div>
       </div>
       <dl class="stats" id="stats"></dl>
@@ -60,10 +75,14 @@
     <section class="grid" id="grid" aria-live="polite"></section>
     <p class="empty" id="empty" hidden>No games match those filters.</p>
   </main>
+  <footer class="site-foot wrap">Game details from <a href="https://rawg.io" target="_blank" rel="noopener">RAWG</a></footer>
 
   <!-- Detail view -->
   <dialog id="detail" class="modal detail">
     <button class="close" data-close aria-label="Close">×</button>
+    <button class="close share" id="shareBtn" aria-label="Share link">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3m0 0L7.5 7.5M12 3l4.5 4.5M8 11H6a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-2"/></svg>
+    </button>
     <div class="dhero">
       <img id="dCover" alt="">
       <div class="dhero-info">
@@ -108,7 +127,8 @@
           <input name="coverUrl" type="url" placeholder="…or paste an image URL" aria-label="Cover image URL">
         </div>
         <div class="fields">
-          <label>Name<input name="name" required maxlength="200"></label>
+          <label>Name<input name="name" required maxlength="200" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="lookupMenu" placeholder="Start typing to search…"></label>
+          <ul class="suggest lookup" id="lookupMenu" role="listbox" hidden></ul>
           <div class="row">
             <label>Status<select name="status"></select></label>
             <label>Released<input name="released" type="date"></label>
@@ -136,7 +156,48 @@
     </form>
   </dialog>
 
-  <div class="toast" id="toast" role="status"></div>
+  <!-- Public: suggest a game -->
+  <dialog id="suggest" class="modal editor small">
+    <form id="suggestForm" novalidate>
+      <header class="editor-head">
+        <h2>Suggest a game</h2>
+        <button type="button" class="close" data-close aria-label="Close">×</button>
+      </header>
+      <p class="lede">Think there's something I should play? Tell me what, and why.</p>
+      <label>Game<input name="game" required maxlength="120" autocomplete="off" placeholder="e.g. Outer Wilds"></label>
+      <p class="hint" id="suggestHint" hidden></p>
+      <label>Why should I play it? <span class="opt">optional</span><textarea name="message" rows="3" maxlength="1000"></textarea></label>
+      <label>Your name <span class="opt">optional</span><input name="from" maxlength="60" autocomplete="nickname"></label>
+      <input name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <p class="form-error" id="suggestError" role="alert"></p>
+      <footer class="editor-foot">
+        <button type="button" class="btn ghost" data-close>Cancel</button>
+        <button type="submit" class="btn primary" id="suggestSend">Send suggestion</button>
+      </footer>
+    </form>
+    <div class="done" id="suggestDone" hidden>
+      <h2>Thanks!</h2>
+      <p class="lede">Your suggestion is in. I read every one.</p>
+      <footer class="editor-foot">
+        <button type="button" class="btn ghost" id="suggestAgain">Suggest another</button>
+        <button type="button" class="btn primary" data-close>Done</button>
+      </footer>
+    </div>
+  </dialog>
+
+  <!-- Owner: suggestion inbox -->
+  <dialog id="inbox" class="modal editor inbox">
+    <div class="inbox-wrap">
+      <header class="editor-head">
+        <h2>Suggestions</h2>
+        <button type="button" class="close" data-close aria-label="Close">×</button>
+      </header>
+      <ul class="inbox-list" id="inboxList"></ul>
+      <p class="empty" id="inboxEmpty" hidden>No suggestions right now.</p>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" popover="manual"></div>
   <script type="module" src="/app.js"></script>
 </body>
 </html>
