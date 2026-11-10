@@ -210,7 +210,8 @@ async function api(path, opts = {}) {
   const res = await fetch(path, { redirect: "manual", ...opts });
   if (res.status === 401) throw new Error("You're signed out. Sign in again at /admin.");
   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `Request failed (${res.status})`);
-  return res.status === 204 ? null : res.json();
+  const text = await res.text(); // 201/204 replies may have no body
+  return text ? JSON.parse(text) : null;
 }
 
 function replaceGame(game) {
